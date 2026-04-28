@@ -8,6 +8,7 @@ import type { TelemetryPoint } from '../types/rocket';
 const PLAYBACK_SPEEDS = [0.5, 1, 2, 4] as const;
 const CAMERA_MODES = ['follow', 'overview'] as const;
 type CameraMode = (typeof CAMERA_MODES)[number];
+const modelUrl = `${import.meta.env.BASE_URL}models/explorer-jupiter-c-rocket.glb`;
 
 export function FlightViewport3D() {
   const telemetry = useSimStore((state) => state.telemetry);
@@ -245,13 +246,13 @@ function EventBeacons({
 }
 
 function RocketModel({ point, scale }: { point: TelemetryPoint; scale: number }) {
-  const gltf = useGLTF('/models/explorer-jupiter-c-rocket.glb');
+  const gltf = useGLTF(modelUrl);
   const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
   const modelScale = 0.85;
 
   return (
     <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
-      <group rotation={[-Math.PI / 2, 0, 0]} scale={[modelScale, modelScale, modelScale]}>
+      <group scale={[modelScale, modelScale, modelScale]}>
         <Clone object={gltf.scene} castShadow receiveShadow />
       </group>
       {point.thrust > 0 ? (
@@ -274,7 +275,7 @@ function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: numb
 
   return (
     <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
-      <group rotation={[-Math.PI / 2, 0, 0]}>
+      <group>
         <mesh castShadow>
           <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
           <meshStandardMaterial color="#e2e8f0" metalness={0.7} roughness={0.25} />
@@ -400,4 +401,4 @@ function phaseLabel(phase: string) {
   }
 }
 
-useGLTF.preload('/models/explorer-jupiter-c-rocket.glb');
+useGLTF.preload(modelUrl);

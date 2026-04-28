@@ -8,6 +8,7 @@ import { TrajectoryChart } from './components/TrajectoryChart';
 import { useSimStore } from './store/simStore';
 
 const FlightViewport3D = lazy(async () => import('./components/FlightViewport3D').then((module) => ({ default: module.FlightViewport3D })));
+const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`;
 
 export default function App() {
   const summary = useSimStore((state) => state.summary);
@@ -33,7 +34,7 @@ export default function App() {
           <div className="rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.18),rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.02)_100%)] p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <img alt="" src="/mission-mark.svg" className="h-10 w-10" />
+                <img alt="" src={assetUrl('mission-mark.svg')} className="h-10 w-10" />
                 <p className="text-xs uppercase tracking-[0.35em] text-sky/70">로켓 비행 시뮬레이터</p>
               </div>
               <StatusBadge label={phase} tone={hasRun ? 'active' : 'idle'} />
@@ -125,16 +126,16 @@ export default function App() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   const iconMap: Record<string, string> = {
-    '최대 고도': '/icons/altitude.svg',
-    '최대 속도': '/icons/speed.svg',
-    '비행 시간': '/icons/time.svg',
-    사거리: '/icons/range.svg',
-    '최대 가속도': '/icons/accel.svg',
-    '연소 종료': '/icons/burnout.svg',
-    정점: '/icons/apogee.svg',
-    'Max-Q': '/icons/pressure.svg',
-    'Max-Q 시점': '/icons/time.svg',
-    '착지 속도': '/icons/touchdown.svg',
+    '최대 고도': assetUrl('icons/altitude.svg'),
+    '최대 속도': assetUrl('icons/speed.svg'),
+    '비행 시간': assetUrl('icons/time.svg'),
+    사거리: assetUrl('icons/range.svg'),
+    '최대 가속도': assetUrl('icons/accel.svg'),
+    '연소 종료': assetUrl('icons/burnout.svg'),
+    정점: assetUrl('icons/apogee.svg'),
+    'Max-Q': assetUrl('icons/pressure.svg'),
+    'Max-Q 시점': assetUrl('icons/time.svg'),
+    '착지 속도': assetUrl('icons/touchdown.svg'),
   };
 
   return (
