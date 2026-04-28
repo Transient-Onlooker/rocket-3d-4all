@@ -10,6 +10,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { useSimStore } from '../store/simStore';
+import { sampleTelemetry } from '../utils/chartSampling';
 
 ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
 
@@ -40,15 +41,15 @@ const options: ChartOptions<'line'> = {
 
 export function TelemetryChart() {
   const telemetry = useSimStore((state) => state.telemetry);
-  const reducedTelemetry = telemetry.filter((_, index) => index % 2 === 0);
+  const reducedTelemetry = sampleTelemetry(telemetry);
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/90 p-5">
+    <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-white">Telemetry</h2>
         <p className="text-sm text-sky/70">Altitude, speed, acceleration, and dynamic pressure over the full flight.</p>
       </div>
-      <div className="h-[360px]">
+      <div className="h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3">
         <Line
           options={options}
           data={{

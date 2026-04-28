@@ -62,3 +62,9 @@ export type SimEvent = {
   time: number;
   value: string;
 };
+
+export type SimSnapshot = SimResult & {
+  presetKey: string | null;
+  hasRun: boolean;
+  isDirty: boolean;
+};

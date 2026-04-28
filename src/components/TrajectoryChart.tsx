@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { useSimStore } from '../store/simStore';
+import { sampleTelemetry } from '../utils/chartSampling';
 
 ChartJS.register(LinearScale, LineElement, PointElement, Tooltip, Legend);
 
@@ -37,7 +38,7 @@ const options: ChartOptions<'line'> = {
 };
 
 export function TrajectoryChart() {
-  const telemetry = useSimStore((state) => state.telemetry);
+  const telemetry = sampleTelemetry(useSimStore((state) => state.telemetry));
   const peakAltitude = telemetry.reduce((highest, point) => Math.max(highest, point.y), 0);
   const eventMarkers = telemetry.filter(
     (point, index) =>
@@ -47,12 +48,12 @@ export function TrajectoryChart() {
   );
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/90 p-5">
+    <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-white">Trajectory</h2>
         <p className="text-sm text-sky/70">2D path from launch rail to touchdown.</p>
       </div>
-      <div className="h-[360px]">
+      <div className="h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3">
         <Line
           options={options}
           data={{

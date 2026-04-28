@@ -1,56 +1,9 @@
 import { create } from 'zustand';
-import { simulateFlight } from '../physics/rocket';
+import { defaultParams, presets, type PresetKey } from '../config/simDefaults';
 import type { RocketParams, SimEvent, SimSummary, TelemetryPoint } from '../types/rocket';
+import { computeSnapshot } from '../utils/simSnapshot';
 
-const defaultParams: RocketParams = {
-  initialMass: 12,
-  fuelMass: 5,
-  thrust: 900,
-  isp: 180,
-  launchAngleDeg: 82,
-  dragCoefficient: 0.38,
-  referenceArea: 0.012,
-  launchRailLength: 2,
-  windSpeed: 0,
-  thrustRampPercent: 18,
-};
-
-export const presets: Record<string, { label: string; params: RocketParams }> = {
-  starter: {
-    label: 'Starter',
-    params: defaultParams,
-  },
-  sounding: {
-    label: 'Sounding',
-    params: {
-      initialMass: 28,
-      fuelMass: 11,
-      thrust: 2400,
-      isp: 215,
-      launchAngleDeg: 86,
-      dragCoefficient: 0.26,
-      referenceArea: 0.009,
-      launchRailLength: 4,
-      windSpeed: 6,
-      thrustRampPercent: 12,
-    },
-  },
-  windy: {
-    label: 'Windy Test',
-    params: {
-      initialMass: 16,
-      fuelMass: 6.5,
-      thrust: 1250,
-      isp: 175,
-      launchAngleDeg: 78,
-      dragCoefficient: 0.42,
-      referenceArea: 0.015,
-      launchRailLength: 3,
-      windSpeed: 18,
-      thrustRampPercent: 24,
-    },
-  },
-};
+const STORAGE_KEY = 'rocket-flight-sim-state';
 
 type SimStore = {
   params: RocketParams;
@@ -59,25 +12,30 @@ type SimStore = {
   warnings: string[];
   events: SimEvent[];
   hasRun: boolean;
+  selectedPreset: PresetKey | null;
+  isDirty: boolean;
   setParam: <K extends keyof RocketParams>(key: K, value: RocketParams[K]) => void;
-  applyPreset: (presetKey: keyof typeof presets) => void;
+  applyPreset: (presetKey: PresetKey) => void;
   runSimulation: () => void;
   resetSimulation: () => void;
 };
 
-function computeSnapshot(params: RocketParams) {
-  return simulateFlight(params);
-}
-
 const initialSnapshot = computeSnapshot(defaultParams);
+const persistedState = loadPersistedState();
+const bootPresetKey = persistedState?.selectedPreset ?? 'starter';
+const bootParams = persistedState?.params ?? initialSnapshot.params;
+const bootSnapshot = computeSnapshot(bootParams);
+const bootIsDirty = bootPresetKey ? !areParamsEqual(bootSnapshot.params, presets[bootPresetKey].params) : true;
 
 export const useSimStore = create<SimStore>((set) => ({
-  params: initialSnapshot.params,
-  telemetry: initialSnapshot.telemetry,
-  summary: initialSnapshot.summary,
-  warnings: initialSnapshot.warnings,
-  events: initialSnapshot.events,
-  hasRun: false,
+  params: bootSnapshot.params,
+  telemetry: bootSnapshot.telemetry,
+  summary: bootSnapshot.summary,
+  warnings: bootSnapshot.warnings,
+  events: bootSnapshot.events,
+  hasRun: persistedState?.hasRun ?? false,
+  selectedPreset: bootPresetKey,
+  isDirty: bootIsDirty,
   setParam: (key, value) =>
     set((state) => {
       const nextParams = {
@@ -85,6 +43,8 @@ export const useSimStore = create<SimStore>((set) => ({
         [key]: value,
       };
       const snapshot = computeSnapshot(nextParams);
+      const isDirty = state.selectedPreset ? !areParamsEqual(snapshot.params, presets[state.selectedPreset].params) : true;
+      persistState(snapshot.params, state.hasRun, state.selectedPreset);
 
       return {
         params: snapshot.params,
@@ -92,11 +52,13 @@ export const useSimStore = create<SimStore>((set) => ({
         summary: snapshot.summary,
         warnings: snapshot.warnings,
         events: snapshot.events,
+        isDirty,
       };
     }),
   applyPreset: (presetKey) =>
     set(() => {
       const snapshot = computeSnapshot(presets[presetKey].params);
+      persistState(snapshot.params, false, presetKey);
       return {
         params: snapshot.params,
         telemetry: snapshot.telemetry,
@@ -104,11 +66,15 @@ export const useSimStore = create<SimStore>((set) => ({
         warnings: snapshot.warnings,
         events: snapshot.events,
         hasRun: false,
+        selectedPreset: presetKey,
+        isDirty: false,
       };
     }),
   runSimulation: () =>
     set((state) => {
       const snapshot = computeSnapshot(state.params);
+      const isDirty = state.selectedPreset ? !areParamsEqual(snapshot.params, presets[state.selectedPreset].params) : true;
+      persistState(snapshot.params, true, state.selectedPreset);
       return {
         params: snapshot.params,
         telemetry: snapshot.telemetry,
@@ -116,15 +82,61 @@ export const useSimStore = create<SimStore>((set) => ({
         warnings: snapshot.warnings,
         events: snapshot.events,
         hasRun: true,
+        isDirty,
       };
     }),
   resetSimulation: () =>
-    set(() => ({
-      params: initialSnapshot.params,
-      telemetry: initialSnapshot.telemetry,
-      summary: initialSnapshot.summary,
-      warnings: initialSnapshot.warnings,
-      events: initialSnapshot.events,
-      hasRun: false,
-    })),
+    set(() => {
+      persistState(initialSnapshot.params, false, 'starter');
+      return {
+        params: initialSnapshot.params,
+        telemetry: initialSnapshot.telemetry,
+        summary: initialSnapshot.summary,
+        warnings: initialSnapshot.warnings,
+        events: initialSnapshot.events,
+        hasRun: false,
+        selectedPreset: 'starter',
+        isDirty: false,
+      };
+    }),
 }));
+
+function areParamsEqual(left: RocketParams, right: RocketParams) {
+  return Object.keys(left).every((key) => left[key as keyof RocketParams] === right[key as keyof RocketParams]);
+}
+
+function loadPersistedState() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as {
+      params: RocketParams;
+      hasRun: boolean;
+      selectedPreset: PresetKey | null;
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistState(params: RocketParams, hasRun: boolean, selectedPreset: PresetKey | null) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      params,
+      hasRun,
+      selectedPreset,
+    }),
+  );
+}

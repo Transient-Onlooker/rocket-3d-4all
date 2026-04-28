@@ -30,20 +30,27 @@ export function ParameterPanel() {
     <section className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-white">Parameters</h2>
-        <p className="text-sm text-sky/70">Tune the baseline model before running a new trajectory.</p>
+        <p className="text-sm text-sky/70">Tune propulsion, geometry, and launch environment with live feedback.</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {controls.map((control) => (
-          <label key={control.key} className="block space-y-2">
+          <label
+            key={control.key}
+            className="block rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-3"
+          >
             <div className="flex items-center justify-between gap-4 text-sm">
-              <span>{control.label}</span>
-              <span className="font-mono text-white">
+              <span className="text-sky/85">{control.label}</span>
+              <span className="font-mono text-sm text-white">
                 {params[control.key].toFixed(control.step < 1 ? 3 : 1)} {control.unit}
               </span>
             </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-sky/45">
+              <span>{control.min}</span>
+              <span>{control.max}</span>
+            </div>
             <input
-              className="w-full"
+              className="slider mt-3 w-full"
               type="range"
               min={control.min}
               max={control.max}
@@ -56,9 +63,11 @@ export function ParameterPanel() {
       </div>
 
       {warnings.length > 0 ? (
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-300/10 p-3 text-sm text-amber-100">
+        <div className="rounded-[1.35rem] border border-amber-400/30 bg-amber-300/10 p-3 text-sm text-amber-100">
           {warnings.map((warning) => (
-            <p key={warning}>{warning}</p>
+            <p key={warning} className="leading-6">
+              {warning}
+            </p>
           ))}
         </div>
       ) : null}
