@@ -14,7 +14,9 @@ type SimStore = {
   hasRun: boolean;
   selectedPreset: PresetKey | null;
   isDirty: boolean;
+  playbackTime: number;
   setParam: <K extends keyof RocketParams>(key: K, value: RocketParams[K]) => void;
+  setPlaybackTime: (time: number) => void;
   applyPreset: (presetKey: PresetKey) => void;
   runSimulation: () => void;
   resetSimulation: () => void;
@@ -36,6 +38,7 @@ export const useSimStore = create<SimStore>((set) => ({
   hasRun: persistedState?.hasRun ?? false,
   selectedPreset: bootPresetKey,
   isDirty: bootIsDirty,
+  playbackTime: 0,
   setParam: (key, value) =>
     set((state) => {
       const nextParams = {
@@ -55,6 +58,10 @@ export const useSimStore = create<SimStore>((set) => ({
         isDirty,
       };
     }),
+  setPlaybackTime: (time) =>
+    set(() => ({
+      playbackTime: time,
+    })),
   applyPreset: (presetKey) =>
     set(() => {
       const snapshot = computeSnapshot(presets[presetKey].params);
@@ -68,6 +75,7 @@ export const useSimStore = create<SimStore>((set) => ({
         hasRun: false,
         selectedPreset: presetKey,
         isDirty: false,
+        playbackTime: 0,
       };
     }),
   runSimulation: () =>
@@ -83,6 +91,7 @@ export const useSimStore = create<SimStore>((set) => ({
         events: snapshot.events,
         hasRun: true,
         isDirty,
+        playbackTime: 0,
       };
     }),
   resetSimulation: () =>
@@ -97,6 +106,7 @@ export const useSimStore = create<SimStore>((set) => ({
         hasRun: false,
         selectedPreset: 'starter',
         isDirty: false,
+        playbackTime: 0,
       };
     }),
 }));

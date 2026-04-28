@@ -187,7 +187,7 @@ function sanitizeParams(params: RocketParams) {
   }
 
   if (Math.abs(windSpeed) > 20) {
-    warnings.push('Strong crosswind is enabled. Expect larger aerodynamic losses and range changes.');
+    warnings.push('강한 횡풍이 설정되어 있습니다. 공력 손실이 커지고 사거리가 크게 달라질 수 있습니다.');
   }
 
   return {

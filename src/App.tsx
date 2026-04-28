@@ -5,6 +5,7 @@ import { PresetPanel } from './components/PresetPanel';
 import { SimControls } from './components/SimControls';
 import { TelemetryChart } from './components/TelemetryChart';
 import { TrajectoryChart } from './components/TrajectoryChart';
+import { presets } from './config/simDefaults';
 import { useSimStore } from './store/simStore';
 
 const FlightViewport3D = lazy(async () => import('./components/FlightViewport3D').then((module) => ({ default: module.FlightViewport3D })));
@@ -18,6 +19,7 @@ export default function App() {
   const params = useSimStore((state) => state.params);
   const isDirty = useSimStore((state) => state.isDirty);
   const selectedPreset = useSimStore((state) => state.selectedPreset);
+  const selectedPresetLabel = selectedPreset && !isDirty ? presets[selectedPreset]?.label ?? selectedPreset : '사용자 설정';
   const latestPoint = telemetry[telemetry.length - 1];
   const liveStatus = latestPoint?.flightPhase ?? 'coast';
   const guidance = warnings.length > 0
@@ -75,7 +77,7 @@ export default function App() {
                 <StatusPill label="경고" value={String(warnings.length)} />
                 <StatusPill label="샘플" value={String(telemetry.length)} />
                 <StatusPill label="단계" value={phase} />
-                <StatusPill label="프리셋" value={selectedPreset && !isDirty ? selectedPreset : '사용자 설정'} />
+                <StatusPill label="프리셋" value={selectedPresetLabel} />
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">

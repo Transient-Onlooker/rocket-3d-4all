@@ -1,30 +1,46 @@
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Clone, Html, Line, OrbitControls, Stars, useGLTF } from '@react-three/drei';
+import { Html, Line, OrbitControls, Stars } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useSimStore } from '../store/simStore';
 import type { TelemetryPoint } from '../types/rocket';
+import { interpolateTelemetry } from '../utils/telemetry';
 
 const PLAYBACK_SPEEDS = [0.5, 1, 2, 4] as const;
 const CAMERA_MODES = ['follow', 'overview'] as const;
 type CameraMode = (typeof CAMERA_MODES)[number];
-const modelUrl = `${import.meta.env.BASE_URL}models/explorer-jupiter-c-rocket.glb`;
 
 export function FlightViewport3D() {
   const telemetry = useSimStore((state) => state.telemetry);
   const params = useSimStore((state) => state.params);
   const events = useSimStore((state) => state.events);
   const summary = useSimStore((state) => state.summary);
+  const setPlaybackTime = useSimStore((state) => state.setPlaybackTime);
   const duration = telemetry[telemetry.length - 1]?.t ?? 0;
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [loopPlayback, setLoopPlayback] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<(typeof PLAYBACK_SPEEDS)[number]>(1);
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow');
   const [currentTime, setCurrentTime] = useState(0);
+  const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
 
   useEffect(() => {
     setCurrentTime(0);
-  }, [telemetry]);
+    setAutoFollowEnabled(true);
+    setPlaybackTime(0);
+  }, [setPlaybackTime, telemetry]);
+
+  useEffect(() => {
+    if (cameraMode === 'follow') {
+      setAutoFollowEnabled(true);
+    }
+  }, [cameraMode]);
+
+  useEffect(() => {
+    setPlaybackTime(currentTime);
+  }, [currentTime, setPlaybackTime]);
 
   useEffect(() => {
     if (!isPlaying || duration <= 0) {
@@ -83,7 +99,7 @@ export function FlightViewport3D() {
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">3D 비행 뷰</h2>
-          <p className="text-sm text-sky/70">현재 시뮬레이션 궤적을 추적형 3D 화면에서 재생합니다.</p>
+          <p className="text-sm text-sky/70">드래그로 회전, 휠로 확대, 우클릭 드래그로 이동할 수 있습니다.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -103,6 +119,12 @@ export function FlightViewport3D() {
           >
             {loopPlayback ? '반복 켜짐' : '반복 꺼짐'}
           </button>
+          <button
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-sky-50 transition hover:bg-white/10"
+            onClick={() => setAutoFollowEnabled(true)}
+          >
+            시점 재설정
+          </button>
           {CAMERA_MODES.map((mode) => (
             <button
               key={mode}
@@ -114,7 +136,7 @@ export function FlightViewport3D() {
               ].join(' ')}
               onClick={() => setCameraMode(mode)}
             >
-              {mode === 'follow' ? '추적' : '개요'}
+              {mode === 'follow' ? '추적' : '자유'}
             </button>
           ))}
           {PLAYBACK_SPEEDS.map((speed) => (
@@ -148,17 +170,33 @@ export function FlightViewport3D() {
             <Line points={trailPoints} color="#ff9f4a" lineWidth={2} />
             <EventBeacons telemetry={telemetry} eventTimes={events.map((event) => event.time)} scale={scale} />
             <LaunchPad />
-            <Suspense fallback={<RocketSilhouette point={currentPoint} scale={scale} />}>
-              <RocketModel point={currentPoint} scale={scale} />
-            </Suspense>
-            <FollowCamera point={currentPoint} scale={scale} mode={cameraMode} />
+            <RocketSilhouette point={currentPoint} scale={scale} />
+            <FollowCamera
+              controlsRef={controlsRef}
+              point={currentPoint}
+              scale={scale}
+              mode={cameraMode}
+              autoFollowEnabled={autoFollowEnabled}
+            />
             <OrbitControls
-              enablePan={cameraMode === 'overview'}
-              enableRotate={cameraMode === 'overview'}
+              ref={controlsRef}
+              makeDefault
+              enablePan
+              enableRotate
               enableZoom
+              enableDamping
+              dampingFactor={0.08}
+              rotateSpeed={0.9}
+              zoomSpeed={0.9}
+              panSpeed={0.8}
               maxPolarAngle={Math.PI * 0.48}
-              minDistance={10}
-              maxDistance={80}
+              minDistance={6}
+              maxDistance={120}
+              onStart={() => {
+                if (cameraMode === 'follow') {
+                  setAutoFollowEnabled(false);
+                }
+              }}
             />
           </Canvas>
         </div>
@@ -187,6 +225,10 @@ export function FlightViewport3D() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mt-3 rounded-[1.25rem] border border-white/10 bg-black/10 px-4 py-3 text-xs leading-6 text-sky/70">
+        추적 모드에서는 로켓을 따라가고, 드래그하는 순간 자동 추적이 잠시 해제됩니다. 다시 따라가게 하려면 <span className="font-semibold text-white">시점 재설정</span>을 누르세요.
       </div>
     </section>
   );
@@ -245,42 +287,18 @@ function EventBeacons({
   );
 }
 
-function RocketModel({ point, scale }: { point: TelemetryPoint; scale: number }) {
-  const gltf = useGLTF(modelUrl);
-  const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
-  const modelScale = 0.85;
-
-  return (
-    <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
-      <group scale={[modelScale, modelScale, modelScale]}>
-        <Clone object={gltf.scene} castShadow receiveShadow />
-      </group>
-      {point.thrust > 0 ? (
-        <mesh position={[0, -1.55, 0]}>
-          <coneGeometry args={[0.14, 1 + Math.min(0.85, point.thrust / 3200), 14]} />
-          <meshBasicMaterial color="#f97316" transparent opacity={0.8} />
-        </mesh>
-      ) : null}
-      <Html position={[0, 2.2, 0]} center distanceFactor={12}>
-        <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-sky-100 backdrop-blur">
-          {phaseLabel(point.flightPhase)}
-        </div>
-      </Html>
-    </group>
-  );
-}
-
 function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: number }) {
   const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
+  const silhouetteScale = 0.58;
 
   return (
-    <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
-      <group>
+    <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, angle - Math.PI / 2]}>
+      <group scale={[silhouetteScale, silhouetteScale, silhouetteScale]}>
         <mesh castShadow>
           <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
           <meshStandardMaterial color="#e2e8f0" metalness={0.7} roughness={0.25} />
         </mesh>
-        <mesh castShadow position={[0, 1.12, 0]} rotation={[0, 0, Math.PI]}>
+        <mesh castShadow position={[0, 1.12, 0]}>
           <coneGeometry args={[0.22, 0.55, 24]} />
           <meshStandardMaterial color="#fb923c" metalness={0.35} roughness={0.35} />
         </mesh>
@@ -293,7 +311,7 @@ function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: numb
           <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
         </mesh>
         {point.thrust > 0 ? (
-          <mesh position={[0, -1.35, 0]}>
+          <mesh position={[0, -1.35, 0]} rotation={[0, 0, Math.PI]}>
             <coneGeometry args={[0.14, 0.85 + Math.min(0.65, point.thrust / 4000), 14]} />
             <meshBasicMaterial color="#f97316" transparent opacity={0.75} />
           </mesh>
@@ -308,82 +326,55 @@ function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: numb
   );
 }
 
-function FollowCamera({ point, scale, mode }: { point: TelemetryPoint; scale: number; mode: CameraMode }) {
+function FollowCamera({
+  controlsRef,
+  point,
+  scale,
+  mode,
+  autoFollowEnabled,
+}: {
+  controlsRef: { current: OrbitControlsImpl | null };
+  point: TelemetryPoint;
+  scale: number;
+  mode: CameraMode;
+  autoFollowEnabled: boolean;
+}) {
   const { camera } = useThree();
+  const initializedMode = useRef<CameraMode | null>(null);
   const target = new THREE.Vector3(point.x * scale, Math.max(1.2, point.y * scale + 1.2), 0);
-  const desired =
-    mode === 'follow'
-      ? new THREE.Vector3(target.x - 10, target.y + 6, 14)
-      : new THREE.Vector3(16, 18, 24);
+  const overviewTarget = new THREE.Vector3(0, Math.max(3, target.y * 0.35), 0);
+  const followPosition = new THREE.Vector3(target.x - 10, target.y + 6, 14);
+  const overviewPosition = new THREE.Vector3(16, 18, 24);
 
   useFrame(() => {
-    camera.position.lerp(desired, mode === 'follow' ? 0.06 : 0.04);
-    camera.lookAt(mode === 'follow' ? target : new THREE.Vector3(0, Math.max(3, target.y * 0.35), 0));
+    if (mode === 'overview') {
+      if (initializedMode.current !== 'overview') {
+        camera.position.copy(overviewPosition);
+        camera.lookAt(overviewTarget);
+        if (controlsRef.current) {
+          controlsRef.current.target.copy(overviewTarget);
+          controlsRef.current.update();
+        }
+        initializedMode.current = 'overview';
+      }
+      return;
+    }
+
+    initializedMode.current = 'follow';
+
+    if (!autoFollowEnabled) {
+      return;
+    }
+
+    camera.position.lerp(followPosition, 0.06);
+    camera.lookAt(target);
+    if (controlsRef.current) {
+      controlsRef.current.target.lerp(target, 0.08);
+      controlsRef.current.update();
+    }
   });
 
   return null;
-}
-
-function interpolateTelemetry(telemetry: TelemetryPoint[], time: number) {
-  if (telemetry.length === 0) {
-    return {
-      t: 0,
-      x: 0,
-      y: 0,
-      vx: 0,
-      vy: 0,
-      mass: 0,
-      speed: 0,
-      airRelativeSpeed: 0,
-      ax: 0,
-      ay: 0,
-      acceleration: 0,
-      thrust: 0,
-      drag: 0,
-      airDensity: 0,
-      dynamicPressure: 0,
-      gravity: 0,
-      fuelRemaining: 0,
-      flightPhase: 'coast' as const,
-    };
-  }
-
-  let nextIndex = telemetry.findIndex((point) => point.t >= time);
-  if (nextIndex === -1) {
-    return telemetry[telemetry.length - 1];
-  }
-
-  if (nextIndex === 0) {
-    return telemetry[0];
-  }
-
-  const previous = telemetry[nextIndex - 1];
-  const next = telemetry[nextIndex];
-  const duration = Math.max(0.0001, next.t - previous.t);
-  const ratio = (time - previous.t) / duration;
-  const phase = ratio < 0.5 ? previous.flightPhase : next.flightPhase;
-
-  return {
-    ...previous,
-    t: time,
-    x: THREE.MathUtils.lerp(previous.x, next.x, ratio),
-    y: THREE.MathUtils.lerp(previous.y, next.y, ratio),
-    vx: THREE.MathUtils.lerp(previous.vx, next.vx, ratio),
-    vy: THREE.MathUtils.lerp(previous.vy, next.vy, ratio),
-    mass: THREE.MathUtils.lerp(previous.mass, next.mass, ratio),
-    speed: THREE.MathUtils.lerp(previous.speed, next.speed, ratio),
-    airRelativeSpeed: THREE.MathUtils.lerp(previous.airRelativeSpeed, next.airRelativeSpeed, ratio),
-    ax: THREE.MathUtils.lerp(previous.ax, next.ax, ratio),
-    ay: THREE.MathUtils.lerp(previous.ay, next.ay, ratio),
-    acceleration: THREE.MathUtils.lerp(previous.acceleration, next.acceleration, ratio),
-    thrust: THREE.MathUtils.lerp(previous.thrust, next.thrust, ratio),
-    drag: THREE.MathUtils.lerp(previous.drag, next.drag, ratio),
-    airDensity: THREE.MathUtils.lerp(previous.airDensity, next.airDensity, ratio),
-    dynamicPressure: THREE.MathUtils.lerp(previous.dynamicPressure, next.dynamicPressure, ratio),
-    gravity: THREE.MathUtils.lerp(previous.gravity, next.gravity, ratio),
-    fuelRemaining: THREE.MathUtils.lerp(previous.fuelRemaining, next.fuelRemaining, ratio),
-    flightPhase: phase,
-  };
 }
 
 function phaseLabel(phase: string) {
@@ -393,12 +384,10 @@ function phaseLabel(phase: string) {
     case 'powered':
       return '추진';
     case 'coast':
-      return '탄도';
+      return '관성';
     case 'descent':
       return '하강';
     default:
       return phase;
   }
 }
-
-useGLTF.preload(modelUrl);
