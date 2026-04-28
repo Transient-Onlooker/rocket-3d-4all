@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, Line, OrbitControls, Stars } from '@react-three/drei';
+import { Clone, Html, Line, OrbitControls, Stars, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimStore } from '../store/simStore';
 import type { TelemetryPoint } from '../types/rocket';
@@ -71,25 +71,25 @@ export function FlightViewport3D() {
     0,
   ];
   const hudItems = [
-    { label: 'Altitude', value: `${currentPoint.y.toFixed(0)} m` },
-    { label: 'Speed', value: `${currentPoint.speed.toFixed(1)} m/s` },
-    { label: 'Q', value: `${(currentPoint.dynamicPressure / 1000).toFixed(1)} kPa` },
-    { label: 'Phase', value: currentPoint.flightPhase },
+    { label: '고도', value: `${currentPoint.y.toFixed(0)} m` },
+    { label: '속도', value: `${currentPoint.speed.toFixed(1)} m/s` },
+    { label: '동압', value: `${(currentPoint.dynamicPressure / 1000).toFixed(1)} kPa` },
+    { label: '단계', value: phaseLabel(currentPoint.flightPhase) },
   ];
 
   return (
     <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">3D Flight View</h2>
-          <p className="text-sm text-sky/70">Replay the current simulated trajectory in a tracked 3D viewport.</p>
+          <h2 className="text-xl font-semibold text-white">3D 비행 뷰</h2>
+          <p className="text-sm text-sky/70">현재 시뮬레이션 궤적을 추적형 3D 화면에서 재생합니다.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             onClick={() => setIsPlaying((playing) => !playing)}
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            {isPlaying ? '일시정지' : '재생'}
           </button>
           <button
             className={[
@@ -100,7 +100,7 @@ export function FlightViewport3D() {
             ].join(' ')}
             onClick={() => setLoopPlayback((loop) => !loop)}
           >
-            {loopPlayback ? 'Loop on' : 'Loop off'}
+            {loopPlayback ? '반복 켜짐' : '반복 꺼짐'}
           </button>
           {CAMERA_MODES.map((mode) => (
             <button
@@ -113,7 +113,7 @@ export function FlightViewport3D() {
               ].join(' ')}
               onClick={() => setCameraMode(mode)}
             >
-              {mode}
+              {mode === 'follow' ? '추적' : '개요'}
             </button>
           ))}
           {PLAYBACK_SPEEDS.map((speed) => (
@@ -147,7 +147,9 @@ export function FlightViewport3D() {
             <Line points={trailPoints} color="#ff9f4a" lineWidth={2} />
             <EventBeacons telemetry={telemetry} eventTimes={events.map((event) => event.time)} scale={scale} />
             <LaunchPad />
-            <RocketActor point={currentPoint} scale={scale} />
+            <Suspense fallback={<RocketSilhouette point={currentPoint} scale={scale} />}>
+              <RocketModel point={currentPoint} scale={scale} />
+            </Suspense>
             <FollowCamera point={currentPoint} scale={scale} mode={cameraMode} />
             <OrbitControls
               enablePan={cameraMode === 'overview'}
@@ -242,36 +244,63 @@ function EventBeacons({
   );
 }
 
-function RocketActor({ point, scale }: { point: TelemetryPoint; scale: number }) {
+function RocketModel({ point, scale }: { point: TelemetryPoint; scale: number }) {
+  const gltf = useGLTF('/models/explorer-jupiter-c-rocket.glb');
+  const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
+  const modelScale = 0.85;
+
+  return (
+    <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
+      <group rotation={[-Math.PI / 2, 0, 0]} scale={[modelScale, modelScale, modelScale]}>
+        <Clone object={gltf.scene} castShadow receiveShadow />
+      </group>
+      {point.thrust > 0 ? (
+        <mesh position={[0, -1.55, 0]}>
+          <coneGeometry args={[0.14, 1 + Math.min(0.85, point.thrust / 3200), 14]} />
+          <meshBasicMaterial color="#f97316" transparent opacity={0.8} />
+        </mesh>
+      ) : null}
+      <Html position={[0, 2.2, 0]} center distanceFactor={12}>
+        <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-sky-100 backdrop-blur">
+          {phaseLabel(point.flightPhase)}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: number }) {
   const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
 
   return (
     <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, Math.PI / 2 - angle]}>
-      <mesh castShadow>
-        <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.7} roughness={0.25} />
-      </mesh>
-      <mesh castShadow position={[0, 1.12, 0]} rotation={[0, 0, Math.PI]}>
-        <coneGeometry args={[0.22, 0.55, 24]} />
-        <meshStandardMaterial color="#fb923c" metalness={0.35} roughness={0.35} />
-      </mesh>
-      <mesh castShadow position={[0, -0.95, 0.18]} rotation={[0.2, 0, 0]}>
-        <boxGeometry args={[0.09, 0.45, 0.3]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
-      </mesh>
-      <mesh castShadow position={[0, -0.95, -0.18]} rotation={[-0.2, 0, 0]}>
-        <boxGeometry args={[0.09, 0.45, 0.3]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
-      </mesh>
-      {point.thrust > 0 ? (
-        <mesh position={[0, -1.35, 0]}>
-          <coneGeometry args={[0.14, 0.85 + Math.min(0.65, point.thrust / 4000), 14]} />
-          <meshBasicMaterial color="#f97316" transparent opacity={0.75} />
+      <group rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.7} roughness={0.25} />
         </mesh>
-      ) : null}
+        <mesh castShadow position={[0, 1.12, 0]} rotation={[0, 0, Math.PI]}>
+          <coneGeometry args={[0.22, 0.55, 24]} />
+          <meshStandardMaterial color="#fb923c" metalness={0.35} roughness={0.35} />
+        </mesh>
+        <mesh castShadow position={[0, -0.95, 0.18]} rotation={[0.2, 0, 0]}>
+          <boxGeometry args={[0.09, 0.45, 0.3]} />
+          <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
+        </mesh>
+        <mesh castShadow position={[0, -0.95, -0.18]} rotation={[-0.2, 0, 0]}>
+          <boxGeometry args={[0.09, 0.45, 0.3]} />
+          <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
+        </mesh>
+        {point.thrust > 0 ? (
+          <mesh position={[0, -1.35, 0]}>
+            <coneGeometry args={[0.14, 0.85 + Math.min(0.65, point.thrust / 4000), 14]} />
+            <meshBasicMaterial color="#f97316" transparent opacity={0.75} />
+          </mesh>
+        ) : null}
+      </group>
       <Html position={[0, 1.85, 0]} center distanceFactor={12}>
         <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-sky-100 backdrop-blur">
-          {point.flightPhase}
+          {phaseLabel(point.flightPhase)}
         </div>
       </Html>
     </group>
@@ -355,3 +384,20 @@ function interpolateTelemetry(telemetry: TelemetryPoint[], time: number) {
     flightPhase: phase,
   };
 }
+
+function phaseLabel(phase: string) {
+  switch (phase) {
+    case 'rail':
+      return '레일';
+    case 'powered':
+      return '추진';
+    case 'coast':
+      return '탄도';
+    case 'descent':
+      return '하강';
+    default:
+      return phase;
+  }
+}
+
+useGLTF.preload('/models/explorer-jupiter-c-rocket.glb');

@@ -8,9 +8,14 @@ export function PresetPanel() {
 
   return (
     <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold text-white">Presets</h2>
-        <p className="text-sm text-sky/70">Quick-load a baseline vehicle before fine-tuning the mission profile.</p>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">프리셋</h2>
+          <p className="text-sm text-sky/70">기본 시나리오를 불러오거나 현재 설정을 확인합니다.</p>
+        </div>
+        <div className="rounded-full border border-white/10 bg-black/10 px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-sky/65">
+          {selectedPreset && !isDirty ? '프리셋 적용' : '사용자 설정'}
+        </div>
       </div>
       <div className="grid gap-2">
         {Object.entries(presets).map(([key, preset]) => (
@@ -50,9 +55,12 @@ function PresetButton({
     >
       <div className="flex items-center justify-between gap-4">
         <div className="font-semibold text-white">{label}</div>
-        {active ? <span className="text-[10px] uppercase tracking-[0.25em] text-sky-100">Loaded</span> : null}
+        {active ? <span className="text-[10px] uppercase tracking-[0.25em] text-sky-100">불러옴</span> : null}
       </div>
       <div className="mt-1 text-xs text-sky/60">{meta}</div>
+      <div className="mt-3 h-1.5 rounded-full bg-white/5">
+        <div className={['h-full rounded-full bg-[linear-gradient(90deg,#7dd3fc,#fb923c)]', active ? 'w-full' : 'w-2/3 opacity-60'].join(' ')} />
+      </div>
     </button>
   );
 }

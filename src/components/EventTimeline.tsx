@@ -6,8 +6,8 @@ export function EventTimeline() {
   return (
     <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-white">Flight Events</h2>
-        <p className="text-sm text-sky/70">Major events extracted from the current trajectory.</p>
+        <h2 className="text-xl font-semibold text-white">비행 이벤트</h2>
+        <p className="text-sm text-sky/70">현재 궤적에서 추출한 주요 이벤트입니다.</p>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {events.map((event) => (

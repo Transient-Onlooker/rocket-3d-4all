@@ -4,6 +4,7 @@ export function SimControls() {
   const runSimulation = useSimStore((state) => state.runSimulation);
   const resetSimulation = useSimStore((state) => state.resetSimulation);
   const hasRun = useSimStore((state) => state.hasRun);
+  const isDirty = useSimStore((state) => state.isDirty);
 
   return (
     <section className="space-y-3">
@@ -12,17 +13,25 @@ export function SimControls() {
           className="flex-1 rounded-[1.35rem] bg-flare px-4 py-3 font-semibold text-ink shadow-lg shadow-orange-950/30 transition hover:brightness-110"
           onClick={runSimulation}
         >
-          {hasRun ? 'Run again' : 'Run simulation'}
+          {hasRun ? '다시 실행' : '시뮬레이션 실행'}
         </button>
         <button
           className="rounded-[1.35rem] border border-white/15 px-4 py-3 font-semibold text-white transition hover:bg-white/10"
           onClick={resetSimulation}
         >
-          Reset
+          초기화
         </button>
       </div>
-      <div className="rounded-[1.35rem] border border-white/10 bg-black/10 px-4 py-3 text-xs leading-6 text-sky/60">
-        Sliders update the preview immediately. Use the run button to mark the current setup as the active scenario.
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[1.35rem] border border-white/10 bg-black/10 px-4 py-3 text-xs leading-6 text-sky/60">
+          슬라이더를 조정하면 미리보기가 즉시 갱신됩니다. 실행 버튼으로 현재 설정을 시나리오에 반영합니다.
+        </div>
+        <div className="rounded-[1.35rem] border border-white/10 bg-black/10 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-sky/55">실행 상태</div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            {isDirty ? '저장되지 않은 파라미터 변경' : hasRun ? '시뮬레이션이 고정됨' : '미리보기 준비 완료'}
+          </div>
+        </div>
       </div>
     </section>
   );

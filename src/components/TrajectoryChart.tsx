@@ -20,12 +20,12 @@ const options: ChartOptions<'line'> = {
   scales: {
     x: {
       type: 'linear',
-      title: { display: true, text: 'Downrange distance (m)', color: '#d6ecff' },
+      title: { display: true, text: '사거리 (m)', color: '#d6ecff' },
       ticks: { color: '#d6ecff' },
       grid: { color: 'rgba(214,236,255,0.1)' },
     },
     y: {
-      title: { display: true, text: 'Altitude (m)', color: '#d6ecff' },
+      title: { display: true, text: '고도 (m)', color: '#d6ecff' },
       ticks: { color: '#d6ecff' },
       grid: { color: 'rgba(214,236,255,0.1)' },
     },
@@ -50,8 +50,8 @@ export function TrajectoryChart() {
   return (
     <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-white">Trajectory</h2>
-        <p className="text-sm text-sky/70">2D path from launch rail to touchdown.</p>
+        <h2 className="text-xl font-semibold text-white">궤적</h2>
+        <p className="text-sm text-sky/70">발사 레일부터 착지까지의 2D 경로입니다.</p>
       </div>
       <div className="h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3">
         <Line
@@ -59,7 +59,7 @@ export function TrajectoryChart() {
           data={{
             datasets: [
               {
-                label: 'Flight path',
+                label: '비행 경로',
                 data: telemetry.map((point) => ({ x: point.x, y: point.y })),
                 borderColor: '#ff9f4a',
                 backgroundColor: '#ff9f4a',
@@ -67,7 +67,7 @@ export function TrajectoryChart() {
                 borderWidth: 2,
               },
               {
-                label: 'Phase markers',
+                label: '단계 표시',
                 data: eventMarkers.map((point) => ({ x: point.x, y: point.y })),
                 borderColor: '#7dd3fc',
                 backgroundColor: '#7dd3fc',

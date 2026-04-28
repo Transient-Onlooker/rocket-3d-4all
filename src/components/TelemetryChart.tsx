@@ -23,7 +23,7 @@ const options: ChartOptions<'line'> = {
   },
   scales: {
     x: {
-      title: { display: true, text: 'Time (s)', color: '#d6ecff' },
+      title: { display: true, text: '시간 (s)', color: '#d6ecff' },
       ticks: { color: '#d6ecff', maxTicksLimit: 10 },
       grid: { color: 'rgba(214,236,255,0.1)' },
     },
@@ -46,8 +46,8 @@ export function TelemetryChart() {
   return (
     <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-white">Telemetry</h2>
-        <p className="text-sm text-sky/70">Altitude, speed, acceleration, and dynamic pressure over the full flight.</p>
+        <h2 className="text-xl font-semibold text-white">텔레메트리</h2>
+        <p className="text-sm text-sky/70">전체 비행 구간의 고도, 속도, 가속도, 동압을 확인합니다.</p>
       </div>
       <div className="h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3">
         <Line
@@ -56,28 +56,28 @@ export function TelemetryChart() {
             labels: reducedTelemetry.map((point) => point.t.toFixed(1)),
             datasets: [
               {
-                label: 'Altitude (m)',
+                label: '고도 (m)',
                 data: reducedTelemetry.map((point) => point.y),
                 borderColor: '#7dd3fc',
                 pointRadius: 0,
                 borderWidth: 2,
               },
               {
-                label: 'Speed (m/s)',
+                label: '속도 (m/s)',
                 data: reducedTelemetry.map((point) => point.speed),
                 borderColor: '#ff9f4a',
                 pointRadius: 0,
                 borderWidth: 2,
               },
               {
-                label: 'Acceleration (m/s^2)',
+                label: '가속도 (m/s^2)',
                 data: reducedTelemetry.map((point) => point.acceleration),
                 borderColor: '#f472b6',
                 pointRadius: 0,
                 borderWidth: 2,
               },
               {
-                label: 'Dynamic pressure (kPa)',
+                label: '동압 (kPa)',
                 data: reducedTelemetry.map((point) => point.dynamicPressure / 1000),
                 borderColor: '#34d399',
                 pointRadius: 0,

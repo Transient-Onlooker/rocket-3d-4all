@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: "Space Grotesk", "Segoe UI", Arial, sans-serif;
   color: #d6ecff;
   background: #040812;
   font-synthesis: none;
@@ -23,10 +23,36 @@ body,
   min-height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background:
     radial-gradient(circle at top, rgba(125, 211, 252, 0.08), transparent 30%),
     linear-gradient(180deg, #07101d 0%, #040812 100%);
+}
+
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.7), rgba(251, 146, 60, 0.7));
+  background-clip: padding-box;
+}
+
+h1,
+h2,
+.font-display {
+  font-family: "Orbitron", "Space Grotesk", sans-serif;
+  letter-spacing: 0.02em;
 }
 
 .slider {

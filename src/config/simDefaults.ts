@@ -15,11 +15,11 @@ export const defaultParams: RocketParams = {
 
 export const presets = {
   starter: {
-    label: 'Starter',
+    label: '기본값',
     params: defaultParams,
   },
   sounding: {
-    label: 'Sounding',
+    label: '소형 고공 로켓',
     params: {
       initialMass: 28,
       fuelMass: 11,
@@ -34,7 +34,7 @@ export const presets = {
     },
   },
   windy: {
-    label: 'Windy Test',
+    label: '강풍 테스트',
     params: {
       initialMass: 16,
       fuelMass: 6.5,
