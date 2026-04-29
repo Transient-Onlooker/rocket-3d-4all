@@ -115,13 +115,13 @@ export function TrajectoryChart() {
   };
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
+    <section className="rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-white">궤적</h2>
         <p className="text-sm text-sky/70">3D 재생 중인 로켓 위치가 아래 2D 궤적에서도 점으로 함께 움직입니다.</p>
       </div>
       <div
-        className="relative h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3"
+        className="relative h-[300px] rounded-[1.25rem] border border-white/5 bg-black/10 p-3 sm:h-[340px] sm:rounded-[1.35rem] xl:h-[380px] xl:rounded-[1.5rem]"
         onMouseDown={handleMarkerMouseDown}
       >
         <Line

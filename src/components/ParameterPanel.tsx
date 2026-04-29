@@ -52,7 +52,7 @@ export function ParameterPanel() {
 
       <div className="space-y-4">
         {groupedControls.map((group) => (
-          <div key={group.title} className="rounded-[1.4rem] border border-white/10 bg-black/10 p-3">
+          <div key={group.title} className="rounded-[1.2rem] border border-white/10 bg-black/10 p-3 sm:rounded-[1.4rem]">
             <div className="mb-3">
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky/80">{group.title}</h3>
               <p className="mt-1 text-xs text-sky/55">{group.hint}</p>
@@ -65,9 +65,9 @@ export function ParameterPanel() {
                 return (
                   <label
                     key={control.key}
-                    className="block rounded-[1.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-3"
+                    className="block rounded-[1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-3 sm:rounded-[1.2rem]"
                   >
-                    <div className="flex items-center justify-between gap-4 text-sm">
+                    <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <span className="text-sky/85">{control.label}</span>
                       <span className="font-mono text-sm text-white">
                         {params[control.key].toFixed(control.step < 1 ? 3 : 1)} {control.unit}

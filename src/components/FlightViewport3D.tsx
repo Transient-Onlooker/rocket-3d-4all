@@ -105,22 +105,22 @@ export function FlightViewport3D() {
   ];
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
+    <section className="rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">3D 비행 뷰</h2>
           <p className="text-sm text-sky/70">드래그로 회전, 휠로 확대, 우클릭 드래그로 이동할 수 있습니다.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar xl:mx-0 xl:flex-wrap xl:overflow-visible xl:px-0 xl:pb-0">
           <button
-            className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="whitespace-nowrap rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 sm:px-4 sm:text-sm"
             onClick={() => setIsPlaying((playing) => !playing)}
           >
             {isPlaying ? '일시정지' : '재생'}
           </button>
           <button
             className={[
-              'rounded-full border px-4 py-2 text-sm font-semibold transition',
+              'whitespace-nowrap rounded-full border px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm',
               loopPlayback
                 ? 'border-sky-300/40 bg-sky-300/15 text-sky-50'
                 : 'border-white/10 bg-white/5 text-sky/75 hover:bg-white/10',
@@ -130,7 +130,7 @@ export function FlightViewport3D() {
             {loopPlayback ? '반복 켜짐' : '반복 꺼짐'}
           </button>
           <button
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-sky-50 transition hover:bg-white/10"
+            className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-50 transition hover:bg-white/10 sm:px-4 sm:text-sm"
             onClick={() => setAutoFollowEnabled(true)}
           >
             시점 재설정
@@ -139,7 +139,7 @@ export function FlightViewport3D() {
             <button
               key={mode}
               className={[
-                'rounded-full border px-3 py-2 text-xs font-semibold uppercase transition',
+                'whitespace-nowrap rounded-full border px-3 py-2 text-[11px] font-semibold uppercase transition sm:text-xs',
                 cameraMode === mode
                   ? 'border-emerald-300/35 bg-emerald-300/12 text-emerald-50'
                   : 'border-white/10 bg-white/5 text-sky/75 hover:bg-white/10',
@@ -153,7 +153,7 @@ export function FlightViewport3D() {
             <button
               key={speed}
               className={[
-                'rounded-full border px-3 py-2 text-xs font-semibold transition',
+                'whitespace-nowrap rounded-full border px-3 py-2 text-[11px] font-semibold transition sm:text-xs',
                 playbackSpeed === speed
                   ? 'border-sky-300/40 bg-sky-300/15 text-sky-50'
                   : 'border-white/10 bg-white/5 text-sky/75 hover:bg-white/10',
@@ -172,7 +172,7 @@ export function FlightViewport3D() {
           lastWheelAtRef.current = performance.now();
         }}
       >
-        <div className="relative h-[440px]">
+        <div className="relative h-[320px] sm:h-[380px] xl:h-[440px]">
           <Canvas shadows dpr={[1, 2]}>
             <color attach="background" args={['#06101d']} />
             <fog attach="fog" args={['#06101d', 30, 120]} />
@@ -242,7 +242,7 @@ export function FlightViewport3D() {
             T+{currentTime.toFixed(1)}s
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {hudItems.map((item) => (
             <div key={item.label} className="rounded-[1.1rem] border border-white/10 bg-black/10 px-4 py-3">
               <div className="text-[10px] uppercase tracking-[0.24em] text-sky/55">{item.label}</div>

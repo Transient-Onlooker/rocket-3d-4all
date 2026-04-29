@@ -55,12 +55,12 @@ export function TelemetryChart() {
   const verticalLineMax = plottedValues.length > 0 ? Math.max(...plottedValues) : 1;
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
+    <section className="rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-white">텔레메트리</h2>
         <p className="text-sm text-sky/70">전체 비행 구간의 고도, 속도, 가속도, 동압을 확인합니다.</p>
       </div>
-      <div className="relative h-[380px] rounded-[1.5rem] border border-white/5 bg-black/10 p-3">
+      <div className="relative h-[300px] rounded-[1.25rem] border border-white/5 bg-black/10 p-3 sm:h-[340px] sm:rounded-[1.35rem] xl:h-[380px] xl:rounded-[1.5rem]">
         <Line
           key={chartKey}
           options={options}

@@ -9,7 +9,7 @@ export function SimControls() {
 
   return (
     <section className="space-y-3">
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <button
           className={launchReady ? 'flex-1 rounded-[1.35rem] bg-flare px-4 py-3 font-semibold text-ink shadow-lg shadow-orange-950/30 transition hover:brightness-110' : 'flex-1 cursor-not-allowed rounded-[1.35rem] bg-slate-600 px-4 py-3 font-semibold text-slate-200 opacity-70'}
           disabled={!launchReady}

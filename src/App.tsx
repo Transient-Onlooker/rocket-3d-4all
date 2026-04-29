@@ -35,9 +35,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#335d91_0%,#0d1831_42%,#040812_100%)] text-sky">
-      <div className="mx-auto grid min-h-screen max-w-[1500px] gap-6 px-4 py-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <aside className="space-y-6 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
-          <div className="rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.18),rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.02)_100%)] p-5">
+      <div className="mx-auto grid min-h-screen max-w-[1500px] gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-5 xl:grid-cols-[380px_minmax(0,1fr)] xl:gap-6 xl:py-6">
+        <aside className="order-2 space-y-4 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:space-y-5 sm:rounded-[1.75rem] sm:p-5 xl:order-none xl:space-y-6 xl:rounded-[2rem] xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+          <div className="rounded-[1.35rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.18),rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.02)_100%)] p-4 sm:rounded-[1.55rem] sm:p-5 xl:rounded-[1.75rem]">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <img alt="" src={assetUrl('mission-mark.svg')} className="h-10 w-10" />
@@ -49,7 +49,7 @@ export default function App() {
             <p className="mt-3 text-sm leading-6 text-sky/80">
               RK4 적분, 발사 레일 처리, 바람 기준 항력, Max-Q 추적, 이벤트 추출을 하나의 화면에 배치했습니다.
             </p>
-            <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
               <MiniStat label="질량" value={`${params.initialMass.toFixed(1)} kg`} />
               <MiniStat label="추력" value={`${params.thrust.toFixed(0)} N`} />
               <MiniStat label="바람" value={`${params.windSpeed.toFixed(0)} m/s`} />
@@ -63,8 +63,8 @@ export default function App() {
           <SimControls />
         </aside>
 
-        <main className="grid gap-6">
-          <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,159,74,0.14),rgba(16,33,58,0.92)_45%,rgba(16,33,58,0.92))] p-5">
+        <main className="order-1 grid gap-4 sm:gap-5 xl:order-none xl:gap-6">
+          <section className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,159,74,0.14),rgba(16,33,58,0.92)_45%,rgba(16,33,58,0.92))] p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-sky/60">시나리오</p>
@@ -77,34 +77,34 @@ export default function App() {
                     : '슬라이더로 입력값을 즉시 갱신합니다. 준비가 되면 실행 버튼을 누르세요.'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                 <StatusPill label="경고" value={String(warnings.length)} />
                 <StatusPill label="샘플" value={String(telemetry.length)} />
                 <StatusPill label="단계" value={phase} />
                 <StatusPill label="프리셋" value={selectedPresetLabel} />
               </div>
             </div>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <InlineBadge label="발사각" value={`${params.launchAngleDeg.toFixed(0)} deg`} />
               <InlineBadge label="레일" value={`${params.launchRailLength.toFixed(1)} m`} />
               <InlineBadge label="추중비" value={launchReady ? '양호' : '이륙 불가'} />
             </div>
           </section>
 
-          <section className="grid gap-4 rounded-[2rem] border border-white/10 bg-panel/90 p-5 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:grid-cols-2 sm:gap-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem] xl:grid-cols-4">
             <Metric label="최대 고도" value={`${summary.peakAltitude.toFixed(0)} m`} />
             <Metric label="최대 속도" value={`${summary.peakSpeed.toFixed(1)} m/s`} />
             <Metric label="비행 시간" value={`${summary.flightTime.toFixed(1)} s`} />
           </section>
 
-          <section className="grid gap-4 rounded-[2rem] border border-white/10 bg-panel/90 p-5 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:grid-cols-2 sm:gap-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem] xl:grid-cols-4">
             <Metric label="사거리" value={`${summary.downrangeDistance.toFixed(0)} m`} />
             <Metric label="최대 가속도" value={`${summary.maxAcceleration.toFixed(1)} m/s^2`} />
             <Metric label="연소 종료" value={`${summary.burnoutTime.toFixed(1)} s`} />
             <Metric label="정점" value={`${summary.apogeeTime.toFixed(1)} s`} />
           </section>
 
-          <section className="grid gap-4 rounded-[2rem] border border-white/10 bg-panel/90 p-5 md:grid-cols-2 xl:grid-cols-3">
+          <section className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:grid-cols-2 sm:gap-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem] xl:grid-cols-3">
             <Metric label="Max-Q" value={`${(summary.maxDynamicPressure / 1000).toFixed(1)} kPa`} />
             <Metric label="Max-Q 시점" value={`${summary.maxDynamicPressureTime.toFixed(1)} s`} />
             <Metric label="착지 속도" value={`${summary.touchdownSpeed.toFixed(1)} m/s`} />
@@ -112,8 +112,8 @@ export default function App() {
 
           <Suspense
             fallback={
-              <section className="rounded-[2rem] border border-white/10 bg-panel/90 p-5">
-                <div className="h-[540px] animate-pulse rounded-[1.5rem] border border-white/5 bg-white/5" />
+              <section className="rounded-[1.5rem] border border-white/10 bg-panel/90 p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
+                <div className="h-[320px] animate-pulse rounded-[1.25rem] border border-white/5 bg-white/5 sm:h-[420px] sm:rounded-[1.35rem] xl:h-[540px] xl:rounded-[1.5rem]" />
               </section>
             }
           >
