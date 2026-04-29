@@ -16,9 +16,12 @@ export function FlightViewport3D() {
   const params = useSimStore((state) => state.params);
   const events = useSimStore((state) => state.events);
   const summary = useSimStore((state) => state.summary);
+  const launchReady = useSimStore((state) => state.launchReady);
+  const playbackTime = useSimStore((state) => state.playbackTime);
   const setPlaybackTime = useSimStore((state) => state.setPlaybackTime);
   const duration = telemetry[telemetry.length - 1]?.t ?? 0;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const lastWheelAtRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [loopPlayback, setLoopPlayback] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<(typeof PLAYBACK_SPEEDS)[number]>(1);
@@ -41,6 +44,13 @@ export function FlightViewport3D() {
   useEffect(() => {
     setPlaybackTime(currentTime);
   }, [currentTime, setPlaybackTime]);
+
+  useEffect(() => {
+    if (Math.abs(playbackTime - currentTime) > 0.01) {
+      setCurrentTime(playbackTime);
+      setIsPlaying(false);
+    }
+  }, [currentTime, playbackTime]);
 
   useEffect(() => {
     if (!isPlaying || duration <= 0) {
@@ -156,8 +166,13 @@ export function FlightViewport3D() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-white/5 bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.08),rgba(0,0,0,0.18)_50%,rgba(0,0,0,0.3)_100%)]">
-        <div className="h-[440px]">
+      <div
+        className="overflow-hidden rounded-[1.5rem] border border-white/5 bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.08),rgba(0,0,0,0.18)_50%,rgba(0,0,0,0.3)_100%)]"
+        onWheelCapture={() => {
+          lastWheelAtRef.current = performance.now();
+        }}
+      >
+        <div className="relative h-[440px]">
           <Canvas shadows dpr={[1, 2]}>
             <color attach="background" args={['#06101d']} />
             <fog attach="fog" args={['#06101d', 30, 120]} />
@@ -167,7 +182,7 @@ export function FlightViewport3D() {
             <Stars radius={120} depth={40} count={1500} factor={4} saturation={0} fade speed={0.3} />
             <SceneGround />
             <Line points={[[0, 0, 0], railEnd]} color="#7dd3fc" lineWidth={2} />
-            <Line points={trailPoints} color="#ff9f4a" lineWidth={2} />
+            {trailPoints.length >= 2 ? <Line points={trailPoints} color="#ff9f4a" lineWidth={2} /> : null}
             <EventBeacons telemetry={telemetry} eventTimes={events.map((event) => event.time)} scale={scale} />
             <LaunchPad />
             <RocketSilhouette point={currentPoint} scale={scale} />
@@ -193,12 +208,22 @@ export function FlightViewport3D() {
               minDistance={6}
               maxDistance={120}
               onStart={() => {
-                if (cameraMode === 'follow') {
+                const justZoomed = performance.now() - lastWheelAtRef.current < 160;
+                if (cameraMode === 'follow' && !justZoomed) {
                   setAutoFollowEnabled(false);
                 }
               }}
             />
           </Canvas>
+          {!launchReady ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45 backdrop-blur-[2px]">
+              <div className="rounded-[1.4rem] border border-rose-300/25 bg-rose-300/12 px-6 py-4 text-center text-rose-50">
+                <div className="text-xs uppercase tracking-[0.28em] text-rose-100/75">Launch Blocked</div>
+                <div className="mt-2 text-lg font-semibold">이륙 불가</div>
+                <div className="mt-2 text-sm text-rose-100/85">추력이 중량을 이기지 못해 발사 레일을 벗어날 수 없습니다.</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

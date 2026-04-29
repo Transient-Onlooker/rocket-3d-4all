@@ -54,6 +54,7 @@ export type SimResult = {
   summary: SimSummary;
   warnings: string[];
   events: SimEvent[];
+  launchReady: boolean;
 };
 
 export type SimEvent = {

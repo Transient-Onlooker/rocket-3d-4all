@@ -10,8 +10,40 @@ const MIN_LAUNCH_SPEED = 1e-6;
 const EARTH_RADIUS = 6_371_000;
 
 export function simulateFlight(rawParams: RocketParams): SimResult {
-  const { params, warnings } = sanitizeParams(rawParams);
+  const { params, warnings, launchReady } = sanitizeParams(rawParams);
   const dryMass = Math.max(DRY_MASS_FLOOR, params.initialMass - params.fuelMass);
+
+  if (!launchReady) {
+    const groundedPoint: TelemetryPoint = {
+      t: 0,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      mass: params.initialMass,
+      speed: 0,
+      airRelativeSpeed: Math.abs(params.windSpeed),
+      ax: 0,
+      ay: 0,
+      acceleration: 0,
+      thrust: params.thrust,
+      drag: 0,
+      airDensity: getAirDensity(0),
+      dynamicPressure: 0,
+      gravity: G0,
+      fuelRemaining: params.fuelMass,
+      flightPhase: 'rail',
+    };
+
+    return {
+      params,
+      telemetry: [groundedPoint],
+      summary: summarizeFlight([groundedPoint]),
+      warnings,
+      events: [],
+      launchReady,
+    };
+  }
 
   let stateVector = [0, 0, 0, 0, params.initialMass];
   let time = 0;
@@ -68,6 +100,7 @@ export function simulateFlight(rawParams: RocketParams): SimResult {
     summary: summarizeFlight(points),
     warnings,
     events: extractEvents(points),
+    launchReady,
   };
 }
 
@@ -182,8 +215,10 @@ function sanitizeParams(params: RocketParams) {
     warnings.push('Fuel mass was clamped to stay below total initial mass.');
   }
 
-  if (thrust <= initialMass * G0) {
-    warnings.push('Thrust-to-weight ratio is below 1.0, so the vehicle may fail to climb cleanly.');
+  const launchReady = thrust > initialMass * G0;
+
+  if (!launchReady) {
+    warnings.push('추력이 중량보다 낮아 이륙할 수 없습니다. 추력을 높이거나 초기 질량을 줄이세요.');
   }
 
   if (Math.abs(windSpeed) > 20) {
@@ -204,6 +239,7 @@ function sanitizeParams(params: RocketParams) {
       thrustRampPercent,
     },
     warnings,
+    launchReady,
   };
 }
 

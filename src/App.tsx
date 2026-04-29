@@ -17,6 +17,7 @@ export default function App() {
   const warnings = useSimStore((state) => state.warnings);
   const telemetry = useSimStore((state) => state.telemetry);
   const params = useSimStore((state) => state.params);
+  const launchReady = useSimStore((state) => state.launchReady);
   const isDirty = useSimStore((state) => state.isDirty);
   const selectedPreset = useSimStore((state) => state.selectedPreset);
   const selectedPresetLabel = selectedPreset && !isDirty ? presets[selectedPreset]?.label ?? selectedPreset : '사용자 설정';
@@ -28,6 +29,9 @@ export default function App() {
       ? '현재 실행 결과가 고정되어 있어 비교가 가능합니다.'
       : '미리보기 모드입니다. 입력을 조정한 뒤 시뮬레이션을 실행하세요.';
   const phase = phaseLabel(liveStatus);
+  const displayGuidance = launchReady
+    ? guidance
+    : '현재 추력으로는 초기 중량을 이기지 못해 발사할 수 없습니다. 추력을 높이거나 초기 질량을 줄이세요.';
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#335d91_0%,#0d1831_42%,#040812_100%)] text-sky">
@@ -51,7 +55,7 @@ export default function App() {
               <MiniStat label="바람" value={`${params.windSpeed.toFixed(0)} m/s`} />
             </div>
             <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-black/10 px-4 py-3 text-sm leading-6 text-sky/75">
-              {guidance}
+              {displayGuidance}
             </div>
           </div>
           <PresetPanel />
@@ -65,7 +69,7 @@ export default function App() {
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-sky/60">시나리오</p>
                 <h2 className="mt-2 text-3xl font-semibold text-white">
-                  {hasRun ? '실행 궤적 고정됨' : '미리보기 궤적 준비됨'}
+                  {!launchReady ? '이륙 불가 상태' : hasRun ? '실행 궤적 고정됨' : '미리보기 궤적 준비됨'}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-sky/75">
                   {hasRun
@@ -83,7 +87,7 @@ export default function App() {
             <div className="mt-5 flex flex-wrap gap-2">
               <InlineBadge label="발사각" value={`${params.launchAngleDeg.toFixed(0)} deg`} />
               <InlineBadge label="레일" value={`${params.launchRailLength.toFixed(1)} m`} />
-              <InlineBadge label="추중비" value={params.thrust > params.initialMass * 9.80665 ? '양호' : '낮음'} />
+              <InlineBadge label="추중비" value={launchReady ? '양호' : '이륙 불가'} />
             </div>
           </section>
 

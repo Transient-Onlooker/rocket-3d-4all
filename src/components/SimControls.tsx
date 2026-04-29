@@ -5,12 +5,14 @@ export function SimControls() {
   const resetSimulation = useSimStore((state) => state.resetSimulation);
   const hasRun = useSimStore((state) => state.hasRun);
   const isDirty = useSimStore((state) => state.isDirty);
+  const launchReady = useSimStore((state) => state.launchReady);
 
   return (
     <section className="space-y-3">
       <div className="flex gap-3">
         <button
-          className="flex-1 rounded-[1.35rem] bg-flare px-4 py-3 font-semibold text-ink shadow-lg shadow-orange-950/30 transition hover:brightness-110"
+          className={launchReady ? 'flex-1 rounded-[1.35rem] bg-flare px-4 py-3 font-semibold text-ink shadow-lg shadow-orange-950/30 transition hover:brightness-110' : 'flex-1 cursor-not-allowed rounded-[1.35rem] bg-slate-600 px-4 py-3 font-semibold text-slate-200 opacity-70'}
+          disabled={!launchReady}
           onClick={runSimulation}
         >
           {hasRun ? '다시 실행' : '시뮬레이션 실행'}

@@ -11,6 +11,7 @@ type SimStore = {
   summary: SimSummary;
   warnings: string[];
   events: SimEvent[];
+  launchReady: boolean;
   hasRun: boolean;
   selectedPreset: PresetKey | null;
   isDirty: boolean;
@@ -35,6 +36,7 @@ export const useSimStore = create<SimStore>((set) => ({
   summary: bootSnapshot.summary,
   warnings: bootSnapshot.warnings,
   events: bootSnapshot.events,
+  launchReady: bootSnapshot.launchReady,
   hasRun: persistedState?.hasRun ?? false,
   selectedPreset: bootPresetKey,
   isDirty: bootIsDirty,
@@ -55,6 +57,7 @@ export const useSimStore = create<SimStore>((set) => ({
         summary: snapshot.summary,
         warnings: snapshot.warnings,
         events: snapshot.events,
+        launchReady: snapshot.launchReady,
         isDirty,
       };
     }),
@@ -72,6 +75,7 @@ export const useSimStore = create<SimStore>((set) => ({
         summary: snapshot.summary,
         warnings: snapshot.warnings,
         events: snapshot.events,
+        launchReady: snapshot.launchReady,
         hasRun: false,
         selectedPreset: presetKey,
         isDirty: false,
@@ -89,6 +93,7 @@ export const useSimStore = create<SimStore>((set) => ({
         summary: snapshot.summary,
         warnings: snapshot.warnings,
         events: snapshot.events,
+        launchReady: snapshot.launchReady,
         hasRun: true,
         isDirty,
         playbackTime: 0,
@@ -103,6 +108,7 @@ export const useSimStore = create<SimStore>((set) => ({
         summary: initialSnapshot.summary,
         warnings: initialSnapshot.warnings,
         events: initialSnapshot.events,
+        launchReady: initialSnapshot.launchReady,
         hasRun: false,
         selectedPreset: 'starter',
         isDirty: false,
