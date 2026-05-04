@@ -46,8 +46,8 @@ export function ParameterPanel() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">파라미터</h2>
-        <p className="text-sm text-sky/70">추진, 형상, 발사 환경을 슬라이더로 즉시 조정합니다.</p>
+        <h2 className="text-lg font-semibold text-white">2. 파라미터 조정</h2>
+        <p className="text-sm text-sky/70">질량, 추력, 각도, 공력 조건을 조정합니다.</p>
       </div>
 
       <div className="space-y-4">

@@ -11,6 +11,21 @@ export type RocketParams = {
   thrustRampPercent: number;
 };
 
+export type SimulationModelMode = 'standard' | 'professional';
+
+export type EngineeringLimits = {
+  minRailExitSpeed: number;
+  watchRailExitSpeed: number;
+  maxDynamicPressureKpa: number;
+  criticalDynamicPressureKpa: number;
+  maxHeatFluxKwM2: number;
+  criticalHeatFluxKwM2: number;
+  maxTouchdownSpeed: number;
+  criticalTouchdownSpeed: number;
+  maxLossRatioPercent: number;
+  criticalLossRatioPercent: number;
+};
+
 export type RocketState = {
   x: number;
   y: number;
@@ -28,7 +43,11 @@ export type TelemetryPoint = RocketState & {
   acceleration: number;
   thrust: number;
   drag: number;
+  effectiveDragCoefficient: number;
   airDensity: number;
+  mach: number;
+  reynoldsNumber: number;
+  heatFlux: number;
   dynamicPressure: number;
   gravity: number;
   fuelRemaining: number;
@@ -45,6 +64,14 @@ export type SimSummary = {
   apogeeTime: number;
   maxDynamicPressure: number;
   maxDynamicPressureTime: number;
+  maxMach: number;
+  maxMachTime: number;
+  maxReynoldsNumber: number;
+  maxReynoldsNumberTime: number;
+  maxHeatFlux: number;
+  maxHeatFluxTime: number;
+  estimatedDragLoss: number;
+  estimatedGravityLoss: number;
   touchdownSpeed: number;
 };
 

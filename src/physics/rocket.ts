@@ -1,6 +1,6 @@
-import { getAirDensity } from './atmosphere';
+import { getAirDensity, getAtmosphereState } from './atmosphere';
 import { rk4Step } from './ode';
-import type { RocketParams, SimEvent, SimResult, TelemetryPoint } from '../types/rocket';
+import type { RocketParams, SimEvent, SimResult, SimulationModelMode, TelemetryPoint } from '../types/rocket';
 
 const G0 = 9.80665;
 const DT = 0.05;
@@ -9,7 +9,7 @@ const DRY_MASS_FLOOR = 0.1;
 const MIN_LAUNCH_SPEED = 1e-6;
 const EARTH_RADIUS = 6_371_000;
 
-export function simulateFlight(rawParams: RocketParams): SimResult {
+export function simulateFlight(rawParams: RocketParams, modelMode: SimulationModelMode = 'professional'): SimResult {
   const { params, warnings, launchReady } = sanitizeParams(rawParams);
   const dryMass = Math.max(DRY_MASS_FLOOR, params.initialMass - params.fuelMass);
 
@@ -28,7 +28,11 @@ export function simulateFlight(rawParams: RocketParams): SimResult {
       acceleration: 0,
       thrust: params.thrust,
       drag: 0,
+      effectiveDragCoefficient: params.dragCoefficient,
       airDensity: getAirDensity(0),
+      mach: 0,
+      reynoldsNumber: 0,
+      heatFlux: 0,
       dynamicPressure: 0,
       gravity: G0,
       fuelRemaining: params.fuelMass,
@@ -48,11 +52,11 @@ export function simulateFlight(rawParams: RocketParams): SimResult {
   let stateVector = [0, 0, 0, 0, params.initialMass];
   let time = 0;
   const points: TelemetryPoint[] = [];
-  const derivatives = makeDerivatives(params, dryMass);
+  const derivatives = makeDerivatives(params, dryMass, modelMode);
 
   while (time <= MAX_TIME) {
     const [x, y, vx, vy, mass] = stateVector;
-    const state = evaluateState(params, dryMass, stateVector);
+    const state = evaluateState(params, dryMass, stateVector, modelMode);
     const [dxdt, dydt, dvxdt, dvydt] = derivatives(time, stateVector);
     const speed = Math.hypot(vx, vy);
     const positionAlongRail = x * Math.cos(state.theta) + y * Math.sin(state.theta);
@@ -72,7 +76,11 @@ export function simulateFlight(rawParams: RocketParams): SimResult {
       acceleration: Math.hypot(dvxdt, dvydt),
       thrust: state.activeThrust,
       drag: state.dragMagnitude,
+      effectiveDragCoefficient: state.effectiveDragCoefficient,
       airDensity: state.density,
+      mach: state.mach,
+      reynoldsNumber: state.reynoldsNumber,
+      heatFlux: state.heatFlux,
       dynamicPressure: state.dynamicPressure,
       gravity: state.gravity,
       fuelRemaining: Math.max(0, mass - dryMass),
@@ -99,15 +107,15 @@ export function simulateFlight(rawParams: RocketParams): SimResult {
     telemetry: points,
     summary: summarizeFlight(points),
     warnings,
-    events: extractEvents(points),
+    events: extractEvents(points, modelMode),
     launchReady,
   };
 }
 
-function makeDerivatives(params: RocketParams, dryMass: number) {
+function makeDerivatives(params: RocketParams, dryMass: number, modelMode: SimulationModelMode) {
   return (_t: number, state: number[]) => {
     const [, , vx, vy, mass] = state;
-    const resolved = evaluateState(params, dryMass, state);
+    const resolved = evaluateState(params, dryMass, state, modelMode);
     const railProjection = state[0] * Math.cos(resolved.theta) + state[1] * Math.sin(resolved.theta);
     const onRail = railProjection < params.launchRailLength && resolved.activeThrust > 0;
 
@@ -124,31 +132,46 @@ function makeDerivatives(params: RocketParams, dryMass: number) {
   };
 }
 
-function evaluateState(params: RocketParams, dryMass: number, state: number[]) {
+function evaluateState(params: RocketParams, dryMass: number, state: number[], modelMode: SimulationModelMode) {
   const [, y, vx, vy, mass] = state;
   const theta = (params.launchAngleDeg * Math.PI) / 180;
-  const gravity = getGravity(y);
+  const gravity = modelMode === 'professional' ? getGravity(y) : G0;
   const fuelRemaining = Math.max(0, mass - dryMass);
   const fuelFraction = params.fuelMass > 0 ? fuelRemaining / params.fuelMass : 0;
-  const thrustScale = getThrustScale(fuelFraction, params.thrustRampPercent);
+  const thrustScale = modelMode === 'professional' ? getThrustScale(fuelFraction, params.thrustRampPercent) : 1;
   const activeThrust = fuelRemaining > 0 ? params.thrust * thrustScale : 0;
   const activeMassFlowRate = activeThrust > 0 ? activeThrust / (params.isp * G0) : 0;
-  const density = getAirDensity(y);
+  const atmosphere = modelMode === 'professional' ? getAtmosphereState(y) : getAtmosphereState(0);
+  const density = atmosphere.density;
   const airRelativeVx = vx - params.windSpeed;
   const airRelativeVy = vy;
   const airRelativeSpeed = Math.max(MIN_LAUNCH_SPEED, Math.hypot(airRelativeVx, airRelativeVy));
+  const characteristicLength = Math.sqrt(params.referenceArea / Math.PI) * 2;
+  const mach = airRelativeSpeed / atmosphere.speedOfSound;
+  const reynoldsNumber = (density * airRelativeSpeed * characteristicLength) / atmosphere.dynamicViscosity;
+  const effectiveDragCoefficient =
+    modelMode === 'professional' ? params.dragCoefficient * getMachDragMultiplier(mach) : params.dragCoefficient;
   const dynamicPressure = 0.5 * density * airRelativeSpeed * airRelativeSpeed;
-  const dragMagnitude = dynamicPressure * params.dragCoefficient * params.referenceArea;
+  const dragMagnitude = dynamicPressure * effectiveDragCoefficient * params.referenceArea;
   const dragX = dragMagnitude * (airRelativeVx / airRelativeSpeed);
   const dragY = dragMagnitude * (airRelativeVy / airRelativeSpeed);
+  const noseRadius = Math.max(0.01, characteristicLength * 0.18);
+  const heatFlux =
+    modelMode === 'professional'
+      ? 1.83e-4 * Math.sqrt(Math.max(0, density) / noseRadius) * Math.pow(airRelativeSpeed, 3)
+      : 0;
 
   return {
     activeThrust,
     activeMassFlowRate,
     density,
+    effectiveDragCoefficient,
     dragMagnitude,
     dynamicPressure,
     airRelativeSpeed,
+    mach,
+    reynoldsNumber,
+    heatFlux,
     gravity,
     dragX,
     dragY,
@@ -168,6 +191,19 @@ export function summarizeFlight(points: TelemetryPoint[]) {
     (highest, point) => (!highest || point.dynamicPressure > highest.dynamicPressure ? point : highest),
     null,
   );
+  const maxMachPoint = points.reduce<TelemetryPoint | null>(
+    (highest, point) => (!highest || point.mach > highest.mach ? point : highest),
+    null,
+  );
+  const maxReynoldsPoint = points.reduce<TelemetryPoint | null>(
+    (highest, point) => (!highest || point.reynoldsNumber > highest.reynoldsNumber ? point : highest),
+    null,
+  );
+  const maxHeatFluxPoint = points.reduce<TelemetryPoint | null>(
+    (highest, point) => (!highest || point.heatFlux > highest.heatFlux ? point : highest),
+    null,
+  );
+  const losses = estimateLosses(points);
 
   return points.reduce(
     (summary, point) => ({
@@ -180,6 +216,14 @@ export function summarizeFlight(points: TelemetryPoint[]) {
       apogeeTime: apogeePoint?.t ?? 0,
       maxDynamicPressure: maxQPoint?.dynamicPressure ?? 0,
       maxDynamicPressureTime: maxQPoint?.t ?? 0,
+      maxMach: maxMachPoint?.mach ?? 0,
+      maxMachTime: maxMachPoint?.t ?? 0,
+      maxReynoldsNumber: maxReynoldsPoint?.reynoldsNumber ?? 0,
+      maxReynoldsNumberTime: maxReynoldsPoint?.t ?? 0,
+      maxHeatFlux: maxHeatFluxPoint?.heatFlux ?? 0,
+      maxHeatFluxTime: maxHeatFluxPoint?.t ?? 0,
+      estimatedDragLoss: losses.dragLoss,
+      estimatedGravityLoss: losses.gravityLoss,
       touchdownSpeed: lastPoint?.speed ?? 0,
     }),
     {
@@ -192,6 +236,14 @@ export function summarizeFlight(points: TelemetryPoint[]) {
       apogeeTime: 0,
       maxDynamicPressure: 0,
       maxDynamicPressureTime: 0,
+      maxMach: 0,
+      maxMachTime: 0,
+      maxReynoldsNumber: 0,
+      maxReynoldsNumberTime: 0,
+      maxHeatFlux: 0,
+      maxHeatFluxTime: 0,
+      estimatedDragLoss: 0,
+      estimatedGravityLoss: 0,
       touchdownSpeed: 0,
     },
   );
@@ -252,6 +304,32 @@ function getGravity(altitudeMeters: number) {
   return G0 * Math.pow(EARTH_RADIUS / (EARTH_RADIUS + altitude), 2);
 }
 
+function getMachDragMultiplier(mach: number) {
+  if (mach < 0.75) return 1;
+  if (mach < 1.05) return 1 + ((mach - 0.75) / 0.3) * 0.45;
+  if (mach < 1.4) return 1.45 - ((mach - 1.05) / 0.35) * 0.18;
+  return Math.max(1.08, 1.27 - Math.min(0.19, (mach - 1.4) * 0.06));
+}
+
+function estimateLosses(points: TelemetryPoint[]) {
+  let dragLoss = 0;
+  let gravityLoss = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    const dt = Math.max(0, point.t - previous.t);
+    const speed = Math.max(MIN_LAUNCH_SPEED, point.speed);
+    dragLoss += (point.drag / Math.max(DRY_MASS_FLOOR, point.mass)) * dt;
+    gravityLoss += point.gravity * Math.max(0, point.vy / speed) * dt;
+  }
+
+  return {
+    dragLoss,
+    gravityLoss,
+  };
+}
+
 function getThrustScale(fuelFraction: number, rampPercent: number) {
   const clamped = clamp(fuelFraction, 0, 1);
   const rampWindow = rampPercent / 100;
@@ -273,7 +351,7 @@ function getThrustScale(fuelFraction: number, rampPercent: number) {
   return 1;
 }
 
-function extractEvents(points: TelemetryPoint[]): SimEvent[] {
+function extractEvents(points: TelemetryPoint[], modelMode: SimulationModelMode): SimEvent[] {
   const railClear = points.find((point) => point.flightPhase !== 'rail');
   const burnout = points.find((point) => point.flightPhase === 'coast' || point.flightPhase === 'descent');
   const apogee = points.reduce<TelemetryPoint | null>(
@@ -284,6 +362,8 @@ function extractEvents(points: TelemetryPoint[]): SimEvent[] {
     (highest, point) => (!highest || point.dynamicPressure > highest.dynamicPressure ? point : highest),
     null,
   );
+  const transonic = modelMode === 'professional' ? points.find((point) => point.mach >= 0.8) : null;
+  const supersonic = modelMode === 'professional' ? points.find((point) => point.mach >= 1) : null;
   const touchdown = points[points.length - 1];
 
   return [
@@ -317,6 +397,22 @@ function extractEvents(points: TelemetryPoint[]): SimEvent[] {
           label: 'Apogee',
           time: apogee.t,
           value: `${apogee.y.toFixed(0)} m`,
+        }
+      : null,
+    transonic
+      ? {
+          id: 'transonic',
+          label: 'Transonic',
+          time: transonic.t,
+          value: `Mach ${transonic.mach.toFixed(2)}`,
+        }
+      : null,
+    supersonic
+      ? {
+          id: 'supersonic',
+          label: 'Supersonic',
+          time: supersonic.t,
+          value: `Mach ${supersonic.mach.toFixed(2)}`,
         }
       : null,
     touchdown

@@ -1,10 +1,17 @@
 import { Component, lazy, Suspense, type ReactNode } from 'react';
+import { EngineeringLimitsPanel } from './components/EngineeringLimitsPanel';
 import { EventTimeline } from './components/EventTimeline';
+import { FlightReadinessPanel } from './components/FlightReadinessPanel';
+import { MissionAnalysisPanel } from './components/MissionAnalysisPanel';
+import { ModelSettingsPanel } from './components/ModelSettingsPanel';
 import { ParameterPanel } from './components/ParameterPanel';
 import { PresetPanel } from './components/PresetPanel';
+import { ScenarioComparisonPanel } from './components/ScenarioComparisonPanel';
 import { SimControls } from './components/SimControls';
 import { TelemetryChart } from './components/TelemetryChart';
 import { TrajectoryChart } from './components/TrajectoryChart';
+import { TuningAssistantPanel } from './components/TuningAssistantPanel';
+import { UncertaintyPanel } from './components/UncertaintyPanel';
 import { presets } from './config/simDefaults';
 import { useSimStore } from './store/simStore';
 
@@ -20,6 +27,7 @@ export default function App() {
   const launchReady = useSimStore((state) => state.launchReady);
   const isDirty = useSimStore((state) => state.isDirty);
   const selectedPreset = useSimStore((state) => state.selectedPreset);
+  const modelMode = useSimStore((state) => state.modelMode);
   const selectedPresetLabel = selectedPreset && !isDirty ? presets[selectedPreset]?.label ?? selectedPreset : '사용자 설정';
   const latestPoint = telemetry[telemetry.length - 1];
   const liveStatus = latestPoint?.flightPhase ?? 'coast';
@@ -47,7 +55,7 @@ export default function App() {
             </div>
             <h1 className="font-display mt-3 text-3xl font-semibold text-white">미션 컨트롤 대시보드</h1>
             <p className="mt-3 text-sm leading-6 text-sky/80">
-              RK4 적분, 발사 레일 처리, 바람 기준 항력, Max-Q 추적, 이벤트 추출을 하나의 화면에 배치했습니다.
+              모델을 고르고 파라미터를 조정하면 궤적, 3D 재생, 핵심 지표가 즉시 갱신됩니다.
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
               <MiniStat label="질량" value={`${params.initialMass.toFixed(1)} kg`} />
@@ -58,12 +66,14 @@ export default function App() {
               {displayGuidance}
             </div>
           </div>
-          <PresetPanel />
+          <ModelSettingsPanel />
+          <EngineeringLimitsPanel />
           <ParameterPanel />
           <SimControls />
+          <PresetPanel />
         </aside>
 
-        <main className="order-1 grid gap-4 sm:gap-5 xl:order-none xl:gap-6">
+        <main className="order-1 grid min-w-0 gap-4 sm:gap-5 xl:order-none xl:gap-6">
           <section className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,159,74,0.14),rgba(16,33,58,0.92)_45%,rgba(16,33,58,0.92))] p-4 sm:rounded-[1.75rem] sm:p-5 xl:rounded-[2rem]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -77,11 +87,12 @@ export default function App() {
                     : '슬라이더로 입력값을 즉시 갱신합니다. 준비가 되면 실행 버튼을 누르세요.'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 sm:gap-3">
                 <StatusPill label="경고" value={String(warnings.length)} />
                 <StatusPill label="샘플" value={String(telemetry.length)} />
                 <StatusPill label="단계" value={phase} />
                 <StatusPill label="프리셋" value={selectedPresetLabel} />
+                <StatusPill label="모델" value={modelMode === 'professional' ? '전문' : '일반'} />
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -109,6 +120,16 @@ export default function App() {
             <Metric label="Max-Q 시점" value={`${summary.maxDynamicPressureTime.toFixed(1)} s`} />
             <Metric label="착지 속도" value={`${summary.touchdownSpeed.toFixed(1)} m/s`} />
           </section>
+
+          {modelMode === 'professional' ? (
+            <>
+              <MissionAnalysisPanel />
+              <FlightReadinessPanel />
+              <UncertaintyPanel />
+              <ScenarioComparisonPanel />
+              <TuningAssistantPanel />
+            </>
+          ) : null}
 
           <Suspense
             fallback={
@@ -214,12 +235,20 @@ function phaseLabel(phase: string) {
 
 class ViewportErrorBoundary extends Component<
   { children: ReactNode },
-  { hasError: boolean }
+  { hasError: boolean; errorMessage: string; errorStack: string }
 > {
-  state = { hasError: false };
+  state = { hasError: false, errorMessage: '', errorStack: '' };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown) {
+    return {
+      hasError: true,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack ?? '' : '',
+    };
+  }
+
+  componentDidCatch(error: unknown, info: unknown) {
+    console.error('3D viewport failed to render', error, info);
   }
 
   render() {
@@ -229,8 +258,19 @@ class ViewportErrorBoundary extends Component<
           <div className="rounded-[1.5rem] border border-amber-400/20 bg-amber-300/10 p-5 text-amber-50">
             <p className="text-xs uppercase tracking-[0.28em] text-amber-100/70">3D 화면을 불러올 수 없음</p>
             <p className="mt-2 text-sm leading-6">
-              3D 화면을 불러오지 못했습니다. 개발 서버를 다시 시작하거나 모듈 캐시가 갱신된 뒤 새로고침하세요.
+              3D 화면 렌더링 중 오류가 발생했습니다. 아래 오류 메시지를 확인한 뒤 브라우저 콘솔의 첫 번째 빨간 에러와 함께 보면 원인을 좁힐 수 있습니다.
             </p>
+            <pre className="mt-4 max-h-44 overflow-auto rounded-2xl border border-amber-100/10 bg-black/25 p-3 text-xs leading-5 text-amber-50/90">
+              {this.state.errorMessage || '알 수 없는 3D 렌더링 오류'}
+              {this.state.errorStack ? `\n\n${this.state.errorStack}` : ''}
+            </pre>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, errorMessage: '', errorStack: '' })}
+              className="mt-4 rounded-2xl border border-amber-100/20 bg-amber-100/10 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-100/15"
+            >
+              3D 다시 시도
+            </button>
           </div>
         </section>
       );

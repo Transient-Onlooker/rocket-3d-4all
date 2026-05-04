@@ -22,18 +22,21 @@ export function FlightViewport3D() {
   const duration = telemetry[telemetry.length - 1]?.t ?? 0;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const lastWheelAtRef = useRef(0);
+  const lastPublishedTimeRef = useRef(0);
+  const suppressNextPublishRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [loopPlayback, setLoopPlayback] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<(typeof PLAYBACK_SPEEDS)[number]>(1);
-  const [cameraMode, setCameraMode] = useState<CameraMode>('follow');
+  const [cameraMode, setCameraMode] = useState<CameraMode>('overview');
   const [currentTime, setCurrentTime] = useState(0);
-  const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
+  const [autoFollowEnabled, setAutoFollowEnabled] = useState(false);
 
   useEffect(() => {
     setCurrentTime(0);
-    setAutoFollowEnabled(true);
+    setAutoFollowEnabled(cameraMode === 'follow');
+    lastPublishedTimeRef.current = 0;
     setPlaybackTime(0);
-  }, [setPlaybackTime, telemetry]);
+  }, [cameraMode, setPlaybackTime, telemetry]);
 
   useEffect(() => {
     if (cameraMode === 'follow') {
@@ -42,15 +45,26 @@ export function FlightViewport3D() {
   }, [cameraMode]);
 
   useEffect(() => {
-    setPlaybackTime(currentTime);
-  }, [currentTime, setPlaybackTime]);
-
-  useEffect(() => {
-    if (Math.abs(playbackTime - currentTime) > 0.01) {
+    const isExternalTime = Math.abs(playbackTime - lastPublishedTimeRef.current) > 0.01;
+    if (isExternalTime && Math.abs(playbackTime - currentTime) > 0.01) {
+      lastPublishedTimeRef.current = playbackTime;
+      suppressNextPublishRef.current = true;
       setCurrentTime(playbackTime);
       setIsPlaying(false);
     }
   }, [currentTime, playbackTime]);
+
+  useEffect(() => {
+    if (suppressNextPublishRef.current) {
+      suppressNextPublishRef.current = false;
+      return;
+    }
+
+    if (Math.abs(lastPublishedTimeRef.current - currentTime) > 0.01) {
+      lastPublishedTimeRef.current = currentTime;
+      setPlaybackTime(currentTime);
+    }
+  }, [currentTime, setPlaybackTime]);
 
   useEffect(() => {
     if (!isPlaying || duration <= 0) {
@@ -91,6 +105,9 @@ export function FlightViewport3D() {
   const trailPoints = telemetry
     .filter((_, index) => index % Math.max(1, Math.ceil(telemetry.length / 140)) === 0)
     .map((point) => [point.x * scale, point.y * scale, 0] as [number, number, number]);
+  const flownTrailPoints = telemetry
+    .filter((point, index) => point.t <= currentTime && index % Math.max(1, Math.ceil(telemetry.length / 140)) === 0)
+    .map((point) => [point.x * scale, point.y * scale, 0.04] as [number, number, number]);
   const railAngle = (params.launchAngleDeg * Math.PI) / 180;
   const railEnd: [number, number, number] = [
     Math.cos(railAngle) * params.launchRailLength * scale,
@@ -182,10 +199,11 @@ export function FlightViewport3D() {
             <Stars radius={120} depth={40} count={1500} factor={4} saturation={0} fade speed={0.3} />
             <SceneGround />
             <Line points={[[0, 0, 0], railEnd]} color="#7dd3fc" lineWidth={2} />
-            {trailPoints.length >= 2 ? <Line points={trailPoints} color="#ff9f4a" lineWidth={2} /> : null}
+            {trailPoints.length >= 2 ? <Line points={trailPoints} color="#7c5a38" lineWidth={1.2} transparent opacity={0.55} /> : null}
+            {flownTrailPoints.length >= 2 ? <Line points={flownTrailPoints} color="#ff9f4a" lineWidth={3} /> : null}
             <EventBeacons telemetry={telemetry} eventTimes={events.map((event) => event.time)} scale={scale} />
             <LaunchPad />
-            <RocketSilhouette point={currentPoint} scale={scale} />
+            <RocketSilhouette telemetry={telemetry} currentTime={currentTime} scale={scale} />
             <FollowCamera
               controlsRef={controlsRef}
               point={currentPoint}
@@ -300,7 +318,7 @@ function EventBeacons({
       {eventTimes.map((time) => {
         const point = interpolateTelemetry(telemetry, time);
         return (
-          <group key={time} position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]}>
+          <group key={time} position={[point.x * scale, point.y * scale, 0]}>
             <mesh>
               <sphereGeometry args={[0.16, 16, 16]} />
               <meshStandardMaterial color="#7dd3fc" emissive="#0ea5e9" emissiveIntensity={0.7} />
@@ -312,13 +330,41 @@ function EventBeacons({
   );
 }
 
-function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: number }) {
-  const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
+function RocketSilhouette({
+  telemetry,
+  currentTime,
+  scale,
+}: {
+  telemetry: TelemetryPoint[];
+  currentTime: number;
+  scale: number;
+}) {
+  const groupRef = useRef<THREE.Group | null>(null);
+  const flameRef = useRef<THREE.Mesh | null>(null);
+  const latestPoint = interpolateTelemetry(telemetry, currentTime);
   const silhouetteScale = 1.05;
-  const altitudeOffset = 0.85;
+
+  useFrame(() => {
+    const point = interpolateTelemetry(telemetry, currentTime);
+    const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
+
+    if (groupRef.current) {
+      groupRef.current.position.set(point.x * scale, point.y * scale, 0);
+      groupRef.current.rotation.set(0, 0, angle - Math.PI / 2);
+    }
+
+    if (flameRef.current) {
+      flameRef.current.visible = point.thrust > 0;
+      flameRef.current.scale.setScalar(1 + Math.min(0.45, point.thrust / 5000));
+    }
+  });
 
   return (
-    <group position={[point.x * scale, Math.max(0.75, point.y * scale + altitudeOffset), 0]} rotation={[0, 0, angle - Math.PI / 2]}>
+    <group
+      ref={groupRef}
+      position={[latestPoint.x * scale, latestPoint.y * scale, 0]}
+      rotation={[0, 0, Math.atan2(latestPoint.vy, Math.max(0.001, latestPoint.vx)) - Math.PI / 2]}
+    >
       <group scale={[silhouetteScale, silhouetteScale, silhouetteScale]}>
         <mesh castShadow>
           <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
@@ -336,14 +382,12 @@ function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: numb
           <boxGeometry args={[0.09, 0.45, 0.3]} />
           <meshStandardMaterial color="#7dd3fc" metalness={0.2} roughness={0.5} />
         </mesh>
-        {point.thrust > 0 ? (
-          <mesh position={[0, -1.35, 0]} rotation={[0, 0, Math.PI]}>
-            <coneGeometry args={[0.14, 0.85 + Math.min(0.65, point.thrust / 4000), 14]} />
-            <meshBasicMaterial color="#f97316" transparent opacity={0.75} />
-          </mesh>
-        ) : null}
+        <mesh ref={flameRef} position={[0, -1.35, 0]} rotation={[0, 0, Math.PI]} visible={latestPoint.thrust > 0}>
+          <coneGeometry args={[0.14, 0.85 + Math.min(0.65, latestPoint.thrust / 4000), 14]} />
+          <meshBasicMaterial color="#f97316" transparent opacity={0.75} />
+        </mesh>
       </group>
-      <pointLight color="#fb923c" intensity={point.thrust > 0 ? 1.1 : 0.35} distance={5} position={[0, -0.8, 0]} />
+      <pointLight color="#fb923c" intensity={latestPoint.thrust > 0 ? 1.1 : 0.35} distance={5} position={[0, -0.8, 0]} />
     </group>
   );
 }
