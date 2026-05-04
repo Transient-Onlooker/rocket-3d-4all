@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, Line, OrbitControls, Stars } from '@react-three/drei';
+import { Line, OrbitControls, Stars } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useSimStore } from '../store/simStore';
@@ -314,18 +314,19 @@ function EventBeacons({
 
 function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: number }) {
   const angle = Math.atan2(point.vy, Math.max(0.001, point.vx));
-  const silhouetteScale = 0.58;
+  const silhouetteScale = 1.05;
+  const altitudeOffset = 0.85;
 
   return (
-    <group position={[point.x * scale, Math.max(0.45, point.y * scale + 0.45), 0]} rotation={[0, 0, angle - Math.PI / 2]}>
+    <group position={[point.x * scale, Math.max(0.75, point.y * scale + altitudeOffset), 0]} rotation={[0, 0, angle - Math.PI / 2]}>
       <group scale={[silhouetteScale, silhouetteScale, silhouetteScale]}>
         <mesh castShadow>
           <cylinderGeometry args={[0.16, 0.22, 1.9, 24]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.7} roughness={0.25} />
+          <meshStandardMaterial color="#f8fafc" emissive="#1e293b" emissiveIntensity={0.18} metalness={0.55} roughness={0.22} />
         </mesh>
         <mesh castShadow position={[0, 1.12, 0]}>
           <coneGeometry args={[0.22, 0.55, 24]} />
-          <meshStandardMaterial color="#fb923c" metalness={0.35} roughness={0.35} />
+          <meshStandardMaterial color="#fb923c" emissive="#7c2d12" emissiveIntensity={0.25} metalness={0.35} roughness={0.35} />
         </mesh>
         <mesh castShadow position={[0, -0.95, 0.18]} rotation={[0.2, 0, 0]}>
           <boxGeometry args={[0.09, 0.45, 0.3]} />
@@ -342,11 +343,7 @@ function RocketSilhouette({ point, scale }: { point: TelemetryPoint; scale: numb
           </mesh>
         ) : null}
       </group>
-      <Html position={[0, 1.85, 0]} center distanceFactor={12}>
-        <div className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-sky-100 backdrop-blur">
-          {phaseLabel(point.flightPhase)}
-        </div>
-      </Html>
+      <pointLight color="#fb923c" intensity={point.thrust > 0 ? 1.1 : 0.35} distance={5} position={[0, -0.8, 0]} />
     </group>
   );
 }
